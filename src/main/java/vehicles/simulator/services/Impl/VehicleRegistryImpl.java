@@ -19,9 +19,9 @@ import vehicles.simulator.services.VehicleRegistry;
 public class VehicleRegistryImpl implements VehicleRegistry {
 	private static final int maxSize = 1000;
 
-	private ExecutorService executorService = Executors.newFixedThreadPool(maxSize);
-	private Random rand = new Random();
-	private TankIndicatorObserver indicatorObserver;
+	private final ExecutorService executorService = Executors.newFixedThreadPool(maxSize);
+	private final Random rand = new Random();
+	private final TankIndicatorObserver indicatorObserver;
 
 	private volatile List<Vehicle> registry = new ArrayList<>();
 

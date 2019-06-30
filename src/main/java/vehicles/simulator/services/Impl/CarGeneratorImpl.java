@@ -12,7 +12,7 @@ import vehicles.simulator.services.VehicleRegistry;
 @Service
 public class CarGeneratorImpl implements CarGenerator {
 
-	private VehicleRegistry vehicleRegistry;
+	private final VehicleRegistry vehicleRegistry;
 
 	@Autowired
 	public CarGeneratorImpl(VehicleRegistry vehicleRegistry) {

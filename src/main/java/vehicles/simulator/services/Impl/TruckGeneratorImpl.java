@@ -11,7 +11,7 @@ import vehicles.simulator.services.VehicleRegistry;
 
 @Service
 public class TruckGeneratorImpl implements TruckGenerator {
-    private VehicleRegistry vehicleRegistry;
+    private final VehicleRegistry vehicleRegistry;
 
 
     @Autowired
