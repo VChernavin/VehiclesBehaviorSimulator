@@ -23,8 +23,7 @@ public class BusGeneratorImpl implements BusGenerator {
 		new Thread(() -> {
 			int i = 0;
 			while (!vehicleRegistry.isFull()) {
-				Bus car = new Bus("Bus " + i);
-				car.addObserver(System.out::println);
+				Bus car = new Bus("Bus " + i, vehicleRegistry);
 				vehicleRegistry.addIfNotFull(car);
 				i++;
 				try {

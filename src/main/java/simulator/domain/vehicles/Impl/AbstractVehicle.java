@@ -8,116 +8,123 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import simulator.services.TankIndicatorObserver;
 import simulator.domain.vehicles.Vehicle;
+import simulator.services.VehicleRegistry;
 
 public abstract class AbstractVehicle implements Vehicle {
+    private final String name;
+    private final VehicleRegistry vehicleRegistry;
+    private double fuelInTank = getTankSize();
 
-	private double tank = getMaxTankCapacity();
+    private List<TankIndicatorObserver> tankIndicatorObservers = new ArrayList<>();
+    private ReadWriteLock lock = new ReentrantReadWriteLock();
+    private Random rand = new Random();
 
-	private List<TankIndicatorObserver> tankIndicatorObservers = new ArrayList<>();
-	private final String name;
-	private ReadWriteLock lock = new ReentrantReadWriteLock();
-	private Random rand = new Random();
 
-	public AbstractVehicle(String name) {
-		this.name = name;
-	}
+    public AbstractVehicle(String name, VehicleRegistry vehicleRegistry) {
+        this.name = name;
+        this.vehicleRegistry = vehicleRegistry;
+    }
 
-	@Override
-	public void run() {
+    @Override
+    public void run() {
 
-		try {
-			while (true) {
-				boolean isTankAlmostEmpty;
-				lock.readLock().lock();
-				try {
-					isTankAlmostEmpty = tank > getMaxTankCapacity() * getConsumption();
-				}
-				finally {
-					lock.readLock().unlock();
-				}
-				if (isTankAlmostEmpty) {
-					Thread.sleep(5000);
-					useFuel();
-				} else {
-					Thread.sleep(10000);
-					fillTank();
-				}
+        try {
+            while (true) {
+                boolean isTankAlmostEmpty;
+                generateIncident();
+                lock.readLock().lock();
+                try {
+                    isTankAlmostEmpty = fuelInTank > getTankSize() * getConsumption();
+                } finally {
+                    lock.readLock().unlock();
+                }
+                if (isTankAlmostEmpty) {
+                    Thread.sleep(5000);
+                    useFuel();
+                } else {
+                    Thread.sleep(10000);
+                    fillTank();
+                }
 
-				notifyObservers();
+                notifyObservers();
 
-				if (rand.nextInt(10) == 1) {
-					generateAlertEvent();
-				}
+                if (rand.nextInt(10) == 1) {
+                    generateAlertEvent();
+                }
 
-			}
-		}
-		catch (InterruptedException e) {
-			e.printStackTrace();
-		}
-	}
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
 
-	public void handleIncidentEvent() {
-		lock.writeLock().lock();
-		try {
-			tank = 0;
-		}
-		finally {
-			lock.writeLock().unlock();
-		}
-	}
+    public void handleIncidentEvent() {
+        lock.writeLock().lock();
+        try {
+            fuelInTank = 0;
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
 
-	public String getName() {
-		return name;
-	}
 
-	public double getTank() {
-		return tank;
-	}
+    @Override
+    public void addObserver(TankIndicatorObserver tankIndicatorObserver) {
+        tankIndicatorObservers.add(tankIndicatorObserver);
+    }
 
-	@Override
-	public void addObserver(TankIndicatorObserver tankIndicatorObserver) {
-		tankIndicatorObservers.add(tankIndicatorObserver);
-	}
+    @Override
+    public void removeObserver(TankIndicatorObserver tankIndicatorObserver) {
+        tankIndicatorObservers.remove(tankIndicatorObserver);
+    }
 
-	@Override
-	public void removeObserver(TankIndicatorObserver tankIndicatorObserver) {
-		tankIndicatorObservers.remove(tankIndicatorObserver);
-	}
+    @Override
+    public void notifyObservers() {
+        lock.readLock().lock();
+        try {
+            tankIndicatorObservers.forEach(o -> o.handleMessage(name, fuelInTank, getTankSize()));
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
 
-	@Override
-	public void notifyObservers() {
-		lock.readLock().lock();
-		try {
-			tankIndicatorObservers.forEach(o -> o.handleMessage(name + " tank = " + tank));
-		}
-		finally {
-			lock.readLock().unlock();
-		}
-	}
+    private void useFuel() {
+        lock.writeLock().lock();
+        try {
+            fuelInTank -= 5;
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
 
-	private void useFuel() {
-		lock.writeLock().lock();
-		try {
-			tank -= 5;
-		}
-		finally {
-			lock.writeLock().unlock();
-		}
-	}
+    private void fillTank() {
+        lock.writeLock().lock();
+        try {
+            fuelInTank = getTankSize();
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
 
-	private void fillTank() {
-		lock.writeLock().lock();
-		try {
-			tank = getMaxTankCapacity();
-		}
-		finally {
-			lock.writeLock().unlock();
-		}
-	}
+    private void generateIncident() {
+        if (rand.nextInt(10) == 1) {
+            Vehicle randomVehicle = vehicleRegistry.getRandomVehicle();
+            if (randomVehicle != null && randomVehicle != this) {
+                randomVehicle.handleIncidentEvent();
+                lock.writeLock().lock();
+                try {
+                    fuelInTank = 0;
+                } finally {
+                    lock.writeLock().unlock();
+                }
+            }
 
-	abstract protected double getMaxTankCapacity();
+        }
+    }
 
-	abstract protected double getConsumption();
+    abstract protected double getTankSize();
 
-	abstract protected void generateAlertEvent();
+    abstract protected double getConsumption();
+
+    abstract protected void generateAlertEvent();
 }

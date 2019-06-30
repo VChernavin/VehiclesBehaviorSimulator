@@ -24,8 +24,7 @@ public class CarGeneratorImpl implements CarGenerator {
 		 new Thread(() -> {
 			int i = 0;
 			while (!vehicleRegistry.isFull()) {
-				Car car = new Car("Car " + i);
-				car.addObserver(System.out::println);
+				Car car = new Car("Car " + i, vehicleRegistry);
 				vehicleRegistry.addIfNotFull(car);
 				i++;
 				try {
